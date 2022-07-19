@@ -67,7 +67,7 @@ public class TargetingEvaluator {
 
         // make thread sleep or can potentially return an empty results array.
         try {
-            Thread.sleep((long) 2.5);
+            Thread.sleep(3);
         } catch(InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
