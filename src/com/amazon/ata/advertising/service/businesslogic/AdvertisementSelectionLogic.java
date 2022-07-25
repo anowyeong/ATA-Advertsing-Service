@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.checkerframework.checker.units.qual.A;
+import org.w3c.dom.css.CSSImportRule;
 
 import java.lang.annotation.Target;
 import java.util.*;
@@ -67,17 +68,6 @@ public class AdvertisementSelectionLogic {
      */
     public GeneratedAdvertisement selectAdvertisement(String customerId, String marketplaceId) {
         GeneratedAdvertisement generatedAdvertisement = new EmptyGeneratedAdvertisement();
-//        if (StringUtils.isEmpty(marketplaceId)) {
-//            LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
-//        } else {
-//            final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
-//
-//            if (CollectionUtils.isNotEmpty(contents)) {
-//                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
-//                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
-//            }
-//
-//        }
 
         if (StringUtils.isEmpty(marketplaceId)) {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
@@ -105,23 +95,60 @@ public class AdvertisementSelectionLogic {
 //                    }
 //                }
 //            }
-            if (contents != null && contents.size() > 0 ) {
-                resultContent = contents.stream()
-                        .filter(Objects::nonNull)
-                        .filter(content -> {
-                            return targetingGroupDao.get(content.getContentId()).stream()
-                                    .filter(Objects::nonNull)
-                                    .anyMatch(group -> targetingEvaluator.evaluate(group) == TargetingPredicateResult.TRUE);
-                        })
-                        .collect(Collectors.toList());
+//            if (contents != null && contents.size() > 0 ) {
+//                resultContent = contents.stream()
+//                        .filter(Objects::nonNull)
+//                        .filter(content -> {
+//                            return targetingGroupDao.get(content.getContentId()).stream()
+//                                    .filter(Objects::nonNull)
+//                                    .anyMatch(group -> targetingEvaluator.evaluate(group) == TargetingPredicateResult.TRUE);
+//                        })
+//                        .collect(Collectors.toList());
+//            }
+//
+//            if (requestContext != null && resultContent.size() > 0) {
+//                AdvertisementContent advertisementContent = resultContent.get(random.nextInt(resultContent.size()));
+//                generatedAdvertisement = new GeneratedAdvertisement(advertisementContent);
+//
+//            }
+
+            TreeMap<TargetingGroup, AdvertisementContent> treeMap = new TreeMap<>(new SortByClickRate());
+
+            if (contents != null && contents.size() > 0) {
+                for (AdvertisementContent content : contents) {
+                    targetingGroups = targetingGroupDao.get(content.getContentId());
+
+                    if (targetingGroups != null) {
+                        for (TargetingGroup group : targetingGroups) {
+                            if (targetingEvaluator.evaluate(group) == TargetingPredicateResult.TRUE) {
+                                treeMap.put(group, content);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
-            if (requestContext != null && resultContent.size() > 0) {
-                AdvertisementContent advertisementContent = resultContent.get(random.nextInt(resultContent.size()));
+            if (requestContext != null && !treeMap.isEmpty()) {
+                AdvertisementContent advertisementContent = treeMap.lastEntry().getValue();
                 generatedAdvertisement = new GeneratedAdvertisement(advertisementContent);
-
             }
         }
             return generatedAdvertisement;
     }
+
+    class SortByClickRate implements Comparator<TargetingGroup> {
+
+        @Override
+        public int compare(TargetingGroup targetingGroup, TargetingGroup t1) {
+            if (targetingGroup.getClickThroughRate() < t1.getClickThroughRate()) {
+                return -1;
+            } else if (targetingGroup.getClickThroughRate() > t1.getClickThroughRate()) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+
 }

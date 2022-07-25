@@ -50,35 +50,28 @@ public class TargetingEvaluator {
 //                                   TargetingPredicateResult.FALSE;
 //    }
 
-        if (targetingGroup.getTargetingPredicates() == null) return TargetingPredicateResult.TRUE;
-
-        ExecutorService executorService = Executors.newCachedThreadPool();
-        results = Collections.synchronizedList(new ArrayList<>());
-
 //        TargetingPredicateResult result = targetingGroup.getTargetingPredicates().stream()
 //                .map(predicate -> predicate.evaluate(requestContext))
 //                .filter(x -> !x.isTrue())
 //                .findFirst().orElse(TargetingPredicateResult.TRUE);
 //        return !result.isTrue() ? TargetingPredicateResult.FALSE : TargetingPredicateResult.TRUE;
 
+        if (targetingGroup.getTargetingPredicates() == null) return TargetingPredicateResult.TRUE;
+
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        results = Collections.synchronizedList(new ArrayList<>());
 
         targetingGroup.getTargetingPredicates().stream()
                 .forEach(predicate -> executorService.submit(new TargetingEvaluatorTask(this, predicate, requestContext)));
 
-        // make thread sleep or can potentially return an empty results array.
-        try {
-            Thread.sleep(10);
-        } catch(InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
 
         executorService.shutdown();
 
         if (results != null && results.isEmpty()) {
-            return TargetingPredicateResult.FALSE;
+            return TargetingPredicateResult.TRUE;
         }
-        return results.get(0);
-
+        TargetingPredicateResult ret = results.stream().filter(x -> !x.isTrue()).findFirst().orElse(TargetingPredicateResult.TRUE);
+        return !ret.isTrue() ? TargetingPredicateResult.FALSE : TargetingPredicateResult.TRUE;
     }
 
     public synchronized void addToList(TargetingPredicateResult result) {

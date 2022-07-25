@@ -24,6 +24,5 @@ public class TargetingEvaluatorTask implements Runnable{
         if (result != null) {
             evaluator.addToList(result);
         }
-
     }
 }
